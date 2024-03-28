@@ -4,3 +4,13 @@
 *.pdb
 
 build/
+
+.vs/broDriver/v17/.suo
+
+*.db
+
+*.vsidx
+
+*.ipch
+
+*.json

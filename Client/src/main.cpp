@@ -1,6 +1,7 @@
 #include "driverNamespace.h"
 
 
+
 static DWORD getProcessId(const wchar_t* processName) {
     DWORD processId{};
 
@@ -55,16 +56,11 @@ static std::uintptr_t getModuleBase(const DWORD pid, const wchar_t* moduleName) 
     return moduleBase;
 }
 
-
-
-
-
-
 int main() {
-    const DWORD pid = getProcessId(L"notepad.exe");
+    const DWORD pid = getProcessId(L"cs2.exe");
 
     if (pid == 0) {
-        std::cout << "Failed to find notepad\n";
+        std::cout << "Failed to find cs2\n";
         std::cin.get();
         return 1;
     }
@@ -78,9 +74,39 @@ int main() {
         return 1;
     }
 
-    if (driver::attachToProcess(driverHandle, pid) == true)
+    if (driver::attachToProcess(driverHandle, pid) == true) {
         std::cout << "Attachment successful.\n";
+        if (const std::uintptr_t client{ getModuleBase(pid, L"client.dll") }; client != 0) {
+            std::cout << "Client found.\n";
 
+            while (true){
+                if (GetAsyncKeyState(VK_END))
+                    break;
+
+                    const auto locaPlayerPawn = driver::readMemory<std::uintptr_t>(
+                        driverHandle, client + client_dll::dwLocalPlayerPawn);
+
+                    if (locaPlayerPawn == 0)
+                        continue;
+
+                    const auto flags = driver::readMemory<std::uint32_t>(driverHandle,
+                        locaPlayerPawn + C_BaseEntity::m_fFlags);
+                    const bool inAir = flags & (1 << 0);
+                    const bool spacePressed = GetAsyncKeyState(VK_SPACE);
+                    const auto forceJump = driver::readMemory<DWORD>(driverHandle, client + client_dll::dwForceJump);
+
+                    if (spacePressed && inAir) {
+                        driver::writeMemory(driverHandle, client + client_dll::dwForceJump, 65537);
+                    }
+                    else if (spacePressed && !inAir) {
+                        driver::writeMemory(driverHandle, client + client_dll::dwForceJump, 256);
+                    }
+                    else if (!spacePressed && forceJump == 66537) {
+                        driver::writeMemory(driverHandle, client + client_dll::dwForceJump, 256);
+                    }
+            }
+        }
+    }
     CloseHandle(driverHandle);
     std::cin.get();
     return 0;
